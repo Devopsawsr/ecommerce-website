@@ -1,0 +1,40 @@
+{
+  "name": "Review",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "Product ID"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Reviewer email"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Review rating"
+    },
+    "title": {
+      "type": "string",
+      "description": "Review title"
+    },
+    "comment": {
+      "type": "string",
+      "description": "Review comment"
+    },
+    "verified_purchase": {
+      "type": "boolean",
+      "default": false,
+      "description": "Verified purchase"
+    }
+  },
+  "required": [
+    "product_id",
+    "user_email",
+    "rating",
+    "title",
+    "comment"
+  ]
+}
