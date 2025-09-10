@@ -1,0 +1,141 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
+
+export default function ProductFilters({ 
+  filters, 
+  onFiltersChange, 
+  onClearFilters 
+}) {
+  const categories = [
+    { id: "electronics", label: "Electronics" },
+    { id: "clothing", label: "Clothing" },
+    { id: "books", label: "Books" },
+    { id: "home", label: "Home & Garden" },
+    { id: "sports", label: "Sports & Outdoors" },
+    { id: "beauty", label: "Beauty & Personal Care" },
+    { id: "toys", label: "Toys & Games" },
+  ];
+
+  const brands = [
+    "Apple", "Samsung", "Nike", "Adidas", "Sony", "LG", "Dell", "HP"
+  ];
+
+  const handleCategoryChange = (categoryId, checked) => {
+    const newCategories = checked
+      ? [...(filters.categories || []), categoryId]
+      : (filters.categories || []).filter(id => id !== categoryId);
+    
+    onFiltersChange({ ...filters, categories: newCategories });
+  };
+
+  const handleBrandChange = (brand, checked) => {
+    const newBrands = checked
+      ? [...(filters.brands || []), brand]
+      : (filters.brands || []).filter(b => b !== brand);
+    
+    onFiltersChange({ ...filters, brands: newBrands });
+  };
+
+  const handlePriceChange = (value) => {
+    onFiltersChange({ ...filters, priceRange: value });
+  };
+
+  return (
+    <Card className="sticky top-24">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg">Filters</CardTitle>
+        <Button variant="ghost" size="sm" onClick={onClearFilters}>
+          <X className="w-4 h-4 mr-1" />
+          Clear
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Price Range */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Price Range</Label>
+          <div className="px-2">
+            <Slider
+              defaultValue={[0, 1000]}
+              max={1000}
+              step={10}
+              value={filters.priceRange || [0, 1000]}
+              onValueChange={handlePriceChange}
+              className="mb-2"
+            />
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>${(filters.priceRange || [0, 1000])[0]}</span>
+              <span>${(filters.priceRange || [0, 1000])[1]}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Categories */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Categories</Label>
+          <div className="space-y-2">
+            {categories.map((category) => (
+              <div key={category.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={category.id}
+                  checked={(filters.categories || []).includes(category.id)}
+                  onCheckedChange={(checked) => handleCategoryChange(category.id, checked)}
+                />
+                <Label htmlFor={category.id} className="text-sm font-normal">
+                  {category.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Brands */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Brands</Label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {brands.map((brand) => (
+              <div key={brand} className="flex items-center space-x-2">
+                <Checkbox
+                  id={brand}
+                  checked={(filters.brands || []).includes(brand)}
+                  onCheckedChange={(checked) => handleBrandChange(brand, checked)}
+                />
+                <Label htmlFor={brand} className="text-sm font-normal">
+                  {brand}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Rating */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Minimum Rating</Label>
+          <div className="space-y-2">
+            {[4, 3, 2, 1].map((rating) => (
+              <div key={rating} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`rating-${rating}`}
+                  checked={filters.minRating === rating}
+                  onCheckedChange={(checked) => 
+                    onFiltersChange({ 
+                      ...filters, 
+                      minRating: checked ? rating : null 
+                    })
+                  }
+                />
+                <Label htmlFor={`rating-${rating}`} className="text-sm">
+                  {rating}+ Stars
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
