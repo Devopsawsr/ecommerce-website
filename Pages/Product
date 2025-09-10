@@ -1,0 +1,372 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Product, CartItem, Review, User } from "@/entities/all";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  Star, 
+  ShoppingCart, 
+  Heart, 
+  Truck, 
+  Shield, 
+  RotateCcw, 
+  ArrowLeft,
+  Plus,
+  Minus
+} from "lucide-react";
+import { format } from "date-fns";
+
+export default function ProductPage() {
+  const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  const [user, setUser] = useState(null);
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+    
+    if (productId) {
+      loadProduct(productId);
+      loadReviews(productId);
+    }
+    loadUser();
+  }, []);
+
+  const loadProduct = async (productId) => {
+    try {
+      const products = await Product.filter({ id: productId });
+      if (products.length > 0) {
+        setProduct(products[0]);
+      }
+    } catch (error) {
+      console.error("Error loading product:", error);
+    }
+    setLoading(false);
+  };
+
+  const loadReviews = async (productId) => {
+    try {
+      const reviewData = await Review.filter({ product_id: productId }, "-created_date");
+      setReviews(reviewData);
+    } catch (error) {
+      console.error("Error loading reviews:", error);
+    }
+  };
+
+  const loadUser = async () => {
+    try {
+      const userData = await User.me();
+      setUser(userData);
+    } catch (error) {
+      console.log("User not authenticated");
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      await User.loginWithRedirect(window.location.href);
+      return;
+    }
+
+    try {
+      const existingItems = await CartItem.filter({ 
+        user_email: user.email, 
+        product_id: product.id 
+      });
+
+      if (existingItems.length > 0) {
+        await CartItem.update(existingItems[0].id, {
+          quantity: existingItems[0].quantity + quantity
+        });
+      } else {
+        await CartItem.create({
+          product_id: product.id,
+          quantity: quantity,
+          user_email: user.email
+        });
+      }
+      
+      // Show success message or redirect to cart
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    }
+  };
+
+  const renderStars = (rating) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`w-4 h-4 ${
+          i < rating ? "text-yellow-400 fill-current" : "text-gray-300"
+        }`}
+      />
+    ));
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="aspect-square bg-gray-200 rounded-lg"></div>
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Product not found</h1>
+          <Button onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => navigate(-1)}
+        className="mb-6"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Products
+      </Button>
+
+      {/* Product Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
+        {/* Product Images */}
+        <div className="space-y-4">
+          <div className="aspect-square overflow-hidden rounded-xl bg-gray-100">
+            <img
+              src={product.image_url || `https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=600&fit=crop&crop=center`}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        {/* Product Info */}
+        <div className="space-y-6">
+          <div>
+            {product.brand && (
+              <p className="text-blue-600 font-medium mb-2">{product.brand}</p>
+            )}
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              {product.name}
+            </h1>
+            
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center">
+                {renderStars(Math.round(product.rating || 0))}
+                <span className="ml-2 text-sm text-gray-500">
+                  ({product.reviews_count || 0} reviews)
+                </span>
+              </div>
+              {product.featured && (
+                <Badge className="bg-gradient-to-r from-blue-600 to-blue-700">
+                  Featured
+                </Badge>
+              )}
+            </div>
+
+            <div className="text-3xl font-bold text-gray-900 mb-6">
+              ${product.price?.toFixed(2)}
+            </div>
+
+            <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              {product.description}
+            </p>
+          </div>
+
+          {/* Stock Status */}
+          <div className="flex items-center gap-2">
+            {product.stock_quantity > 5 ? (
+              <Badge className="bg-green-100 text-green-800">In Stock</Badge>
+            ) : product.stock_quantity > 0 ? (
+              <Badge className="bg-orange-100 text-orange-800">
+                Only {product.stock_quantity} left
+              </Badge>
+            ) : (
+              <Badge className="bg-red-100 text-red-800">Out of Stock</Badge>
+            )}
+          </div>
+
+          {/* Quantity and Add to Cart */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium">Quantity:</label>
+              <div className="flex items-center border rounded-lg">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
+                  disabled={quantity >= product.stock_quantity}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700 h-12"
+                onClick={handleAddToCart}
+                disabled={product.stock_quantity === 0}
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Add to Cart
+              </Button>
+              <Button variant="outline" size="icon" className="h-12">
+                <Heart className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t">
+            <div className="flex items-center gap-3">
+              <Truck className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium">Free Shipping</p>
+                <p className="text-sm text-gray-500">Orders over $50</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <RotateCcw className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium">30-Day Returns</p>
+                <p className="text-sm text-gray-500">Easy returns</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="font-medium">Warranty</p>
+                <p className="text-sm text-gray-500">1 year coverage</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Product Details Tabs */}
+      <Tabs defaultValue="description" className="mt-12">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="description">Description</TabsTrigger>
+          <TabsTrigger value="specifications">Specifications</TabsTrigger>
+          <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="description" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-gray-600 leading-relaxed">
+                {product.description || "No detailed description available."}
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="specifications" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium">Brand</p>
+                    <p className="text-gray-600">{product.brand || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Category</p>
+                    <p className="text-gray-600">{product.category}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Stock</p>
+                    <p className="text-gray-600">{product.stock_quantity} units</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">SKU</p>
+                    <p className="text-gray-600">{product.id}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="reviews" className="mt-6">
+          <div className="space-y-6">
+            {reviews.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              reviews.map((review) => (
+                <Card key={review.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {review.user_email[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{review.user_email}</p>
+                          <div className="flex items-center gap-2">
+                            {renderStars(review.rating)}
+                            {review.verified_purchase && (
+                              <Badge variant="outline" className="text-green-600 border-green-600">
+                                Verified Purchase
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(review.created_date), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <CardTitle className="text-lg">{review.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">{review.comment}</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
